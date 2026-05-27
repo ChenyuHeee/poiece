@@ -24,6 +24,7 @@ export default function Workshop() {
   )
   const [poemTitle, setPoemTitle] = useState('')
   const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [expandedPoem, setExpandedPoem] = useState<string | null>(null)
 
@@ -76,11 +77,38 @@ export default function Workshop() {
     }
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!poemContent.trim()) return
-    const firstLine = poemContent.trim().split('\n')[0].slice(0, 20)
-    savePoem(poemTitle || firstLine || 'untitled', poemContent, [...selectedIds])
+    setSaving(true)
+    let title = poemTitle.trim()
+    if (!title && hasApiKey) {
+      try {
+        const settings = getSettings()
+        const baseUrl = settings.apiBase.includes('deepseek') ? settings.apiBase : settings.apiBase
+        const res = await fetch(`${baseUrl}/chat/completions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.apiKey}` },
+          body: JSON.stringify({
+            model: settings.apiBase.includes('deepseek') ? 'deepseek-chat' : settings.model,
+            messages: [
+              { role: 'system', content: '为这首诗取一个4-8字的诗题。只输出诗题本身，不要引号、不要解释、不要任何多余文字。' },
+              { role: 'user', content: poemContent.slice(0, 400) },
+            ],
+            temperature: 0.7,
+            max_tokens: 50,
+          }),
+        })
+        const data = await res.json()
+        title = (data.choices?.[0]?.message?.content || '')
+          .trim()
+          .replace(/^["'「」《》\s]+/, '')
+          .replace(/["'「」《》\s]+$/, '')
+          .slice(0, 20)
+      } catch {}
+    }
+    savePoem(title || 'untitled', poemContent, [...selectedIds])
     setPoemTitle('')
+    setSaving(false)
   }
 
   const hasApiKey = !!getSettings().apiKey
@@ -161,10 +189,10 @@ export default function Workshop() {
             <div className="flex justify-end mt-3 pt-3 border-t border-white/5">
               <button
                 onClick={handleSave}
-                disabled={!poemContent.trim()}
+                disabled={!poemContent.trim() || saving}
                 className="px-5 py-1.5 text-sm text-amber border border-amber/40 hover:bg-amber/10 transition-colors disabled:opacity-30 cursor-pointer disabled:cursor-default"
               >
-                save draft
+                {saving ? 'naming...' : 'save draft'}
               </button>
             </div>
           </div>
