@@ -7,22 +7,33 @@ import { useNavigate } from 'react-router-dom'
 
 const floatAnims = ['a', 'b', 'c', 'd', 'e', 'f']
 
-function hashFromId(id: string): number[] {
+function hashString(s: string): number {
   let h = 0
-  for (let i = 0; i < id.length; i++) {
-    h = ((h << 5) - h + id.charCodeAt(i)) | 0
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) - h + s.charCodeAt(i)) | 0
   }
-  const abs = Math.abs(h)
-  // Extract multiple pseudo-random values from the hash
-  return [
-    abs % 1000 / 1000,           // 0: x position
-    (abs >> 3) % 1000 / 1000,    // 1: y position
-    (abs >> 7) % 1000 / 1000,    // 2: rotation
-    (abs >> 11) % 1000 / 1000,   // 3: scale
-    (abs >> 15) % 6,             // 4: animation index
-    (abs >> 19) % 1000 / 1000,   // 5: animation delay
-    (abs >> 23) % 1000 / 1000,   // 6: size factor
-  ]
+  return Math.abs(h)
+}
+
+// LCG pseudo-random generator — each seed produces a completely different sequence
+function lcg(seed: number): () => number {
+  let state = seed
+  return () => {
+    state = (state * 1664525 + 1013904223) | 0
+    return (state >>> 0) / 4294967296
+  }
+}
+
+function chaosFromId(id: string) {
+  const rng = lcg(hashString(id))
+  return {
+    x: 3 + rng() * 78,
+    y: 2 + rng() * 74,
+    rot: -9 + rng() * 18,
+    scale: 0.8 + rng() * 0.4,
+    anim: Math.floor(rng() * 6),
+    delay: rng() * 3,
+  }
 }
 
 export default function Home() {
@@ -110,13 +121,8 @@ export default function Home() {
           </div>
         ) : (
           inspirations.map((insp) => {
-            const h = hashFromId(insp.id)
-            const x = 3 + h[0] * 80    // 3% - 83%
-            const y = 2 + h[1] * 76    // 2% - 78%
-            const rot = -8 + h[2] * 16 // -8deg to 8deg
-            const scale = 0.82 + h[3] * 0.36 // 0.82 to 1.18
-            const animName = floatAnims[Math.floor(h[4])]
-            const delay = h[5] * 3
+            const c = chaosFromId(insp.id)
+            const animName = floatAnims[c.anim]
             const baseSize = Math.min(insp.content.length * 13 + 36, 300)
             const isSelected = selectedIds.has(insp.id)
 
@@ -126,15 +132,15 @@ export default function Home() {
                 <div
                   style={{
                     position: 'absolute',
-                    left: `${x}%`,
-                    top: `${y}%`,
-                    zIndex: Math.floor(h[2] * 10),
+                    left: `${c.x}%`,
+                    top: `${c.y}%`,
+                    zIndex: Math.floor(c.rot * 10) + 5,
                   }}
                 >
                   {/* Inner: rotation + scale (static) */}
                   <div
                     style={{
-                      transform: `rotate(${rot}deg) scale(${scale})`,
+                      transform: `rotate(${c.rot}deg) scale(${c.scale})`,
                     }}
                   >
                     {/* Main fragment bubble — float animation */}
@@ -149,7 +155,7 @@ export default function Home() {
                       style={{
                         minWidth: baseSize > 120 ? baseSize : 120,
                         maxWidth: 300,
-                        animationDelay: `${delay}s`,
+                        animationDelay: `${c.delay}s`,
                       }}
                       className={`bubble bubble-mine bubble-float-${animName} ${isSelected ? 'bubble-selected' : ''}`}
                       title={insp.content}
@@ -167,13 +173,10 @@ export default function Home() {
                   {/* Agent bubbles */}
                   {insp.responses.map((resp, ri) => {
                     const agent = agents.find((a) => a.id === resp.agentId)
-                    const rh = hashFromId(insp.id + ':' + ri)
-                    const rx = -50 + rh[0] * 100
-                    const ry = -50 + rh[1] * 100
-                    const rrot = -15 + rh[2] * 30
-                    const rscale = 0.7 + rh[3] * 0.35
-                    const ranim = floatAnims[Math.floor(rh[4])]
-                    const rdelay = rh[5] * 2
+                    const rc = chaosFromId(insp.id + ':' + ri)
+                    const rx = -60 + rc.x * 1.5
+                    const ry = -60 + rc.y * 1.5
+                    const ranim = floatAnims[rc.anim]
 
                     return (
                       <div
@@ -187,7 +190,7 @@ export default function Home() {
                       >
                         <div
                           style={{
-                            transform: `rotate(${rrot}deg) scale(${rscale})`,
+                            transform: `rotate(${rc.rot}deg) scale(${rc.scale})`,
                           }}
                         >
                           <button
@@ -197,7 +200,7 @@ export default function Home() {
                             }}
                             style={{
                               maxWidth: 220,
-                              animationDelay: `${rdelay}s`,
+                              animationDelay: `${rc.delay}s`,
                             }}
                             className={`bubble bubble-agent bubble-agent-${resp.agentId} bubble-float-${ranim}`}
                             title={`${agent?.icon} ${agent?.name}: ${resp.content}\n点击采纳`}
