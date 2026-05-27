@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink-50: #f8f7f4;
+  --color-ink-100: #f0ede5;
+  --color-ink-200: #e0dbce;
+  --color-ink-300: #c4bda8;
+  --color-ink-400: #a89a7e;
+  --color-ink-500: #8c7b5e;
+  --color-ink-600: #6b5d48;
+  --color-ink-700: #4a3f32;
+  --color-ink-800: #2d2520;
+  --color-ink-900: #1a1512;
+  --color-parchment: #faf7f0;
+  --color-accent: #b8765a;
+  --color-accent-light: #d4a08a;
+}
+
+body {
+  background-color: var(--color-parchment);
+  color: var(--color-ink-900);
+  font-family: "Georgia", "Noto Serif SC", "Source Han Serif SC", serif;
+  margin: 0;
+}
+
+#root {
+  max-width: 960px;
+  margin: 0 auto;
+  min-height: 100svh;
+}
+
+.poem-text {
+  line-height: 2.2;
+  letter-spacing: 0.03em;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-ink-200);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+.card:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.agent-msg {
+  border-left: 3px solid var(--color-accent);
+  padding-left: 12px;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: var(--color-ink-100);
+  color: var(--color-ink-600);
+  font-family: system-ui, sans-serif;
+}
