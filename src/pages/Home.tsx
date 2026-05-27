@@ -205,6 +205,7 @@ export default function Home() {
                     left: `${fragLayout.x}%`,
                     top: `${fragLayout.y}%`,
                     zIndex: isSelected ? 15 : 5,
+                    transition: 'left 0.5s cubic-bezier(0.34,1.56,0.64,1), top 0.5s cubic-bezier(0.34,1.56,0.64,1)',
                   }}
                 >
                   <div style={{ transform: `rotate(${fragRot}deg) scale(${fragLayout.scale})` }}>
@@ -242,6 +243,7 @@ export default function Home() {
                       left: `${bubbleLayout.x}%`,
                       top: `${bubbleLayout.y}%`,
                       zIndex: 2,
+                      transition: 'left 0.5s cubic-bezier(0.34,1.56,0.64,1), top 0.5s cubic-bezier(0.34,1.56,0.64,1)',
                     }}
                   >
                     <div
