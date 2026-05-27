@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from 'react'
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { useStore } from '../store'
 import { agents as agentDefs } from '../agents/defs'
 import { callLLM, getSettings, parseAgentItems } from '../lib/llm'
@@ -52,6 +52,7 @@ export default function Home() {
   const removeInspiration = useStore((s) => s.removeInspiration)
   const promoteAgentResponse = useStore((s) => s.promoteAgentResponse)
   const removeAgentResponse = useStore((s) => s.removeAgentResponse)
+  const cleanupExpiredResponses = useStore((s) => s.cleanupExpiredResponses)
 
   const [input, setInput] = useState('')
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set())
@@ -68,6 +69,12 @@ export default function Home() {
   }, [inspirations])
 
   const cloudLayout = useMemo(() => computeCloudLayout(cloudKeys, sessionSeed.current), [cloudKeys])
+
+  // Auto-evict old bubbles: 3min lifespan, max 20 bubbles
+  useEffect(() => {
+    const interval = setInterval(() => cleanupExpiredResponses(3 * 60 * 1000, 20), 30000)
+    return () => clearInterval(interval)
+  }, [cleanupExpiredResponses])
 
   const handleAdd = useCallback(async () => {
     const v = input.trim()
@@ -150,6 +157,8 @@ export default function Home() {
                 if (!layout) return null
                 const agent = agentDefs.find((a) => a.id === resp.agentId)
                 const animName = floatAnims[layout.anim]
+                const age = Date.now() - resp.timestamp
+                const fading = age > 2.5 * 60 * 1000 // fade in last 30s of 3min life
 
                 return (
                   <div
@@ -163,6 +172,8 @@ export default function Home() {
                       transform: `rotate(${layout.rot}deg) scale(${layout.scale})`,
                       animationDelay: `${layout.delay}s`,
                       maxWidth: 200, zIndex: 1,
+                      opacity: fading ? 0.35 : 1,
+                      transition: 'opacity 2s ease',
                     }}
                     className={`ink-bubble ink-bubble-${resp.agentId} ink-float-${animName} group`}
                     title={`${agent?.icon} ${agent?.name}\n${resp.content}\nclick or drag → collect`}

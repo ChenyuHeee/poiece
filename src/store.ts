@@ -32,6 +32,7 @@ interface Store {
   removeAgentResponse: (inspirationId: string, responseIndex: number) => void
   clearAgentResponses: (inspirationId: string) => void
   promoteAgentResponse: (inspirationId: string, responseIndex: number) => void
+  cleanupExpiredResponses: (maxAgeMs?: number, maxTotal?: number) => void
 
   savePoem: (title: string, content: string, sourceIds: string[]) => void
   updatePoem: (id: string, title: string, content: string) => void
@@ -127,6 +128,44 @@ export const useStore = create<Store>((set, get) => ({
     const nextInspirations = [newInsp, ...state.inspirations]
     save('poiece-inspirations', nextInspirations)
     set({ inspirations: nextInspirations })
+  },
+
+  cleanupExpiredResponses: (maxAgeMs = 3 * 60 * 1000, maxTotal = 20) => {
+    const state = get()
+    const now = Date.now()
+    let totalRemaining = 0
+
+    // First pass: count total and remove expired
+    const afterAge = state.inspirations.map((insp) => {
+      const filtered = insp.responses.filter((r) => now - r.timestamp < maxAgeMs)
+      totalRemaining += filtered.length
+      if (filtered.length === insp.responses.length) return insp
+      return { ...insp, responses: filtered }
+    })
+
+    // Second pass: if still over max, remove oldest
+    if (totalRemaining > maxTotal) {
+      // Collect all responses with their location
+      interface Entry { inspIdx: number; respIdx: number; ts: number }
+      const all: Entry[] = []
+      afterAge.forEach((insp, i) => {
+        insp.responses.forEach((r, j) => all.push({ inspIdx: i, respIdx: j, ts: r.timestamp }))
+      })
+      all.sort((a, b) => a.ts - b.ts)
+      const toRemove = all.slice(0, totalRemaining - maxTotal)
+      const removeSet = new Set<string>()
+      toRemove.forEach((e) => removeSet.add(`${e.inspIdx}:${e.respIdx}`))
+
+      const final = afterAge.map((insp, i) => {
+        const filtered = insp.responses.filter((_, j) => !removeSet.has(`${i}:${j}`))
+        return { ...insp, responses: filtered }
+      })
+      save('poiece-inspirations', final)
+      set({ inspirations: final })
+    } else {
+      save('poiece-inspirations', afterAge)
+      set({ inspirations: afterAge })
+    }
   },
 
   savePoem: (title, content, sourceIds) => {
