@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useStore } from '../store'
 import { agents } from '../agents/defs'
-import { callLLM, getSettings } from '../lib/llm'
+import { callLLM, getSettings, formatAgentItems } from '../lib/llm'
 import { Loader2, Trash2, Copy, Sparkles, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
@@ -53,8 +53,9 @@ export default function Workshop() {
     setLoading(true)
     setError('')
     try {
-      const result = await callLLM(structAgent.systemPrompt, structAgent.userPromptTemplate(selectedFragments, context))
-      setPoemContent(poemContent ? poemContent + '\n\n--- 结构建议 ---\n' + result : result)
+      const raw = await callLLM(structAgent.systemPrompt, structAgent.userPromptTemplate(selectedFragments, context))
+      const formatted = formatAgentItems(raw)
+      setPoemContent(poemContent ? poemContent + '\n\n--- 结构建议 ---\n' + formatted : formatted)
     } catch (e: any) {
       setError(e.message)
     } finally {

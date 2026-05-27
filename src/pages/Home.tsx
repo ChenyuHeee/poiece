@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { useStore } from '../store'
 import { agents } from '../agents/defs'
-import { callLLM, getSettings } from '../lib/llm'
+import { callLLM, getSettings, parseAgentItems } from '../lib/llm'
 import { X, Loader2, Sparkles, ArrowRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
@@ -40,7 +40,7 @@ export default function Home() {
   const inspirations = useStore((s) => s.inspirations)
   const addInspiration = useStore((s) => s.addInspiration)
   const removeInspiration = useStore((s) => s.removeInspiration)
-  const addAgentResponse = useStore((s) => s.addAgentResponse)
+  const addAgentResponses = useStore((s) => s.addAgentResponses)
   const promoteAgentResponse = useStore((s) => s.promoteAgentResponse)
   const clearAgentResponses = useStore((s) => s.clearAgentResponses)
 
@@ -85,12 +85,16 @@ export default function Home() {
     setLoadingAgent(`${inspirationId}:${agentId}`)
     setError('')
     try {
-      const result = await callLLM(
+      const raw = await callLLM(
         agent.systemPrompt,
         agent.userPromptTemplate(insp.content, context),
         controller.signal
       )
-      addAgentResponse(inspirationId, { agentId, content: result })
+      const items = parseAgentItems(raw)
+      addAgentResponses(
+        inspirationId,
+        items.map((it) => ({ agentId, title: it.title, content: it.body }))
+      )
     } catch (e: any) {
       if (e.name === 'AbortError') return
       setError(e.message)
@@ -206,7 +210,7 @@ export default function Home() {
                             title={`${agent?.icon} ${agent?.name}: ${resp.content}\n点击采纳`}
                           >
                             <span className="mr-1 text-xs">{agent?.icon}</span>
-                            <span className="truncate">{resp.content.slice(0, 24)}</span>
+                            <span className="truncate">{resp.title || resp.content.slice(0, 24)}</span>
                           </button>
                         </div>
                       </div>
@@ -353,7 +357,8 @@ export default function Home() {
                         <p className="text-xs text-ink-400 mb-1">
                           {agent?.icon} {agent?.name}
                         </p>
-                        <p className="text-ink-700 whitespace-pre-wrap">{resp.content}</p>
+                        {resp.title && <p className="text-sm font-medium text-ink-800 mb-1">{resp.title}</p>}
+                        <p className="text-ink-700 whitespace-pre-wrap text-sm">{resp.content}</p>
                         <p className="text-xs text-accent mt-2">点击采纳 → 变成你的气泡</p>
                       </button>
                     )

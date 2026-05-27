@@ -1,5 +1,6 @@
 export interface AgentResponse {
   agentId: string
+  title: string
   content: string
   timestamp: number
 }

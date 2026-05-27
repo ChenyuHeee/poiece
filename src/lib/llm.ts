@@ -52,3 +52,29 @@ export async function callLLM(
   const data = await res.json()
   return data.choices?.[0]?.message?.content || ''
 }
+
+export interface ParsedItem {
+  title: string
+  body: string
+}
+
+/** Parse LLM JSON response into items. Falls back to raw text as a single item. */
+export function parseAgentItems(raw: string): ParsedItem[] {
+  try {
+    const cleaned = raw.trim().replace(/^```json\s*/i, '').replace(/\s*```$/, '')
+    const json = JSON.parse(cleaned)
+    if (json.items && Array.isArray(json.items)) {
+      return json.items.map((it: any) => ({
+        title: String(it.title || '').slice(0, 12),
+        body: String(it.body || it.content || it.text || ''),
+      }))
+    }
+  } catch {}
+  return [{ title: '', body: raw }]
+}
+
+/** Format parsed items as readable text (for Workshop display). */
+export function formatAgentItems(raw: string): string {
+  const items = parseAgentItems(raw)
+  return items.map((it) => (it.title ? `**${it.title}**\n${it.body}` : it.body)).join('\n\n')
+}

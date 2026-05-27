@@ -28,7 +28,7 @@ interface Store {
   addInspiration: (content: string, tags: string[]) => void
   removeInspiration: (id: string) => void
   updateInspiration: (id: string, content: string, tags: string[]) => void
-  addAgentResponse: (inspirationId: string, response: { agentId: string; content: string }) => void
+  addAgentResponses: (inspirationId: string, responses: { agentId: string; title: string; content: string }[]) => void
   clearAgentResponses: (inspirationId: string) => void
   promoteAgentResponse: (inspirationId: string, responseIndex: number) => void
 
@@ -68,14 +68,20 @@ export const useStore = create<Store>((set, get) => ({
     set({ inspirations: next })
   },
 
-  addAgentResponse: (inspirationId, resp) => {
+  addAgentResponses: (inspirationId, resps) => {
+    const now = Date.now()
     const next = get().inspirations.map((i) =>
       i.id === inspirationId
         ? {
             ...i,
             responses: [
               ...i.responses,
-              { agentId: resp.agentId, content: resp.content, timestamp: Date.now() },
+              ...resps.map((r) => ({
+                agentId: r.agentId,
+                title: r.title,
+                content: r.content,
+                timestamp: now,
+              })),
             ],
           }
         : i
