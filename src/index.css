@@ -64,13 +64,32 @@ body::before {
   box-shadow:
     2px 3px 8px rgba(0,0,0,0.3),
     -1px -1px 0 rgba(255,255,255,0.05) inset;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, filter 0.2s ease;
 }
 
 .torn-paper:hover {
+  transform: translateY(-3px) !important;
   box-shadow:
-    3px 5px 14px rgba(0,0,0,0.45),
-    0 0 0 1px var(--color-amber-glow);
+    4px 8px 20px rgba(0,0,0,0.5),
+    0 0 0 2px var(--color-amber-glow),
+    0 0 30px rgba(200,121,65,0.15);
+  filter: brightness(1.08);
+}
+
+.torn-paper:active {
+  transform: translateY(0px) scale(0.96) !important;
+  transition: transform 0.08s ease;
+}
+
+/* Selected — unmistakable amber blaze */
+@keyframes selectedPulse {
+  0%, 100% { box-shadow: 0 0 0 3px var(--color-amber), 0 0 20px rgba(200,121,65,0.4), 2px 3px 8px rgba(0,0,0,0.3); }
+  50%      { box-shadow: 0 0 0 4px var(--color-amber-glow), 0 0 35px rgba(200,121,65,0.6), 2px 3px 8px rgba(0,0,0,0.3); }
+}
+
+.torn-paper-selected {
+  animation: selectedPulse 2s ease-in-out infinite;
+  filter: brightness(1.12) saturate(1.1);
 }
 
 /* torn variants — different clip paths for irregularity */
@@ -170,15 +189,18 @@ body::before {
 }
 
 .ink-bubble:hover {
-  transform: scale(1.12) !important;
+  transform: scale(1.15) translateY(-3px) !important;
   z-index: 100 !important;
-  --glow-color: rgba(200,121,65,0.8);
+  --glow-color: rgba(200,121,65,0.9);
   animation-play-state: paused;
+  filter: brightness(1.2);
 }
 
 .ink-bubble:active {
   cursor: grabbing;
-  transform: scale(0.94) !important;
+  transform: scale(0.9) !important;
+  filter: brightness(0.9);
+  transition: transform 0.08s ease, filter 0.08s ease;
 }
 
 /* agent color variants — each agent has a distinctive glow */

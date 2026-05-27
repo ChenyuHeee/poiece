@@ -210,8 +210,8 @@ export default function Home() {
                   <div style={{ transform: `rotate(${fragRot}deg) scale(${fragLayout.scale})` }}>
                     <button
                       onClick={() => toggleForgeSelect(insp.id)}
-                      className={`${variant} group flex items-center gap-1.5 px-3 py-2 max-w-[260px] cursor-pointer transition-shadow ${
-                        isSelected ? '!shadow-[0_0_0_2px_var(--color-amber),0_0_16px_rgba(200,121,65,0.35)]' : ''
+                      className={`${variant} group flex items-center gap-1.5 px-3 py-2 max-w-[260px] cursor-pointer ${
+                        isSelected ? 'torn-paper-selected' : ''
                       }`}
                     >
                       <span className="text-sm poem-text break-words min-w-0 line-clamp-3">{insp.content}</span>
