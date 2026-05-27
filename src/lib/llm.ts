@@ -76,5 +76,5 @@ export function parseAgentItems(raw: string): ParsedItem[] {
 /** Format parsed items as readable text (for Workshop display). */
 export function formatAgentItems(raw: string): string {
   const items = parseAgentItems(raw)
-  return items.map((it) => (it.title ? `**${it.title}**\n${it.body}` : it.body)).join('\n\n')
+  return items.map((it) => it.body).join('\n')
 }
