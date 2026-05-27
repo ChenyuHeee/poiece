@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react'
 import { getSettings, saveSettings } from '../lib/llm'
 import type { Settings } from '../types'
-import { Key, Globe, Cpu, Check, AlertCircle, ExternalLink } from 'lucide-react'
+import { Check, ExternalLink } from 'lucide-react'
 
 const MODEL_PRESETS = [
   { value: 'deepseek-v4-pro', label: 'DeepSeek V4 Pro', base: 'https://api.deepseek.com' },
   { value: 'deepseek-chat', label: 'DeepSeek Chat (V3)', base: 'https://api.deepseek.com' },
   { value: 'gpt-4o-mini', label: 'GPT-4o Mini', base: 'https://api.openai.com/v1' },
   { value: 'gpt-4o', label: 'GPT-4o', base: 'https://api.openai.com/v1' },
-  { value: 'qwen-turbo', label: '通义千问 Turbo', base: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
-  { value: 'qwen-plus', label: '通义千问 Plus', base: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
+  { value: 'qwen-turbo', label: 'Qwen Turbo', base: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
+  { value: 'qwen-plus', label: 'Qwen Plus', base: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
 ]
 
 export default function SettingsPage() {
@@ -19,174 +19,97 @@ export default function SettingsPage() {
   const [customModel, setCustomModel] = useState(false)
 
   useEffect(() => {
-    const s = getSettings()
-    setSettings(s)
-    // If current model isn't in presets, show custom input
-    if (!MODEL_PRESETS.find((p) => p.value === s.model)) {
-      setCustomModel(true)
-    }
+    const s = getSettings(); setSettings(s)
+    if (!MODEL_PRESETS.find((p) => p.value === s.model)) setCustomModel(true)
   }, [])
 
-  const handleSave = () => {
-    saveSettings(settings)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }
+  const handleSave = () => { saveSettings(settings); setSaved(true); setTimeout(() => setSaved(false), 2000) }
 
   const handleModelSelect = (value: string) => {
-    if (value === '__custom__') {
-      setCustomModel(true)
-      return
-    }
+    if (value === '__custom__') { setCustomModel(true); return }
     setCustomModel(false)
     const preset = MODEL_PRESETS.find((p) => p.value === value)
-    if (preset) {
-      setSettings({ ...settings, model: preset.value, apiBase: preset.base })
-    }
+    if (preset) setSettings({ ...settings, model: preset.value, apiBase: preset.base })
   }
 
   return (
     <div className="h-full overflow-y-auto px-4 py-4">
-      <h1 className="text-2xl font-semibold text-ink-900 mb-2">设置</h1>
-      <p className="text-ink-500 text-sm mb-6">
-        配置 LLM API，启用 AI 辅助创作。数据均存储在你的浏览器中。
-      </p>
+      <h1 className="text-xl italic font-semibold text-ink mb-2" style={{ fontFamily: '"Cormorant Garamond", serif' }}>settings</h1>
+      <p className="text-sm text-ink-dim/50 mb-6 italic">your key stays in your browser. nowhere else.</p>
 
-      <div className="space-y-5 max-w-lg">
-        <div className="card p-4">
-          <label className="flex items-center gap-2 text-sm font-medium text-ink-700 mb-2">
-            <Key size={16} />
-            API Key
+      <div className="space-y-4 max-w-lg">
+        {/* API Key */}
+        <div className="settings-card p-4">
+          <label className="flex items-center gap-2 text-sm font-medium text-ink-dim mb-2">
+            <span className="text-amber">—</span> api key
           </label>
           <div className="flex gap-2">
             <input
-              type={showKey ? 'text' : 'password'}
-              value={settings.apiKey}
+              type={showKey ? 'text' : 'password'} value={settings.apiKey}
               onChange={(e) => setSettings({ ...settings, apiKey: e.target.value })}
-              placeholder="sk-..."
-              className="flex-1 bg-ink-50 border border-ink-200 rounded-lg px-3 py-2 text-sm text-ink-900 outline-none focus:border-accent transition-colors font-mono"
+              placeholder="sk-..." className="flex-1 px-3 py-2 text-sm font-mono"
             />
-            <button
-              onClick={() => setShowKey(!showKey)}
-              className="px-3 py-2 text-xs text-ink-500 hover:text-ink-700 transition-colors cursor-pointer"
-            >
-              {showKey ? '隐藏' : '显示'}
+            <button onClick={() => setShowKey(!showKey)} className="px-3 py-2 text-xs text-ink-dim hover:text-ink transition-colors cursor-pointer">
+              {showKey ? 'hide' : 'show'}
             </button>
           </div>
           <div className="flex items-center gap-2 mt-2">
-            <a
-              href="https://platform.deepseek.com/api_keys"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-accent hover:underline"
-            >
-              获取 DeepSeek API Key <ExternalLink size={10} />
+            <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener noreferrer"
+               className="inline-flex items-center gap-1 text-xs text-amber/70 hover:text-amber transition-colors">
+              deepseek keys <ExternalLink size={9} />
             </a>
-            <span className="text-xs text-ink-300">|</span>
-            <a
-              href="https://platform.openai.com/api-keys"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-accent hover:underline"
-            >
-              获取 OpenAI API Key <ExternalLink size={10} />
+            <span className="text-ink-dim/20">·</span>
+            <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer"
+               className="inline-flex items-center gap-1 text-xs text-amber/70 hover:text-amber transition-colors">
+              openai keys <ExternalLink size={9} />
             </a>
           </div>
-          <p className="text-xs text-ink-400 mt-1">
-            Key 仅存储在浏览器 localStorage 中，不会上传到任何服务器。
-          </p>
         </div>
 
-        <div className="card p-4">
-          <label className="flex items-center gap-2 text-sm font-medium text-ink-700 mb-3">
-            <Cpu size={16} />
-            模型选择
+        {/* Model */}
+        <div className="settings-card p-4">
+          <label className="flex items-center gap-2 text-sm font-medium text-ink-dim mb-3">
+            <span className="text-amber">—</span> model
           </label>
           <div className="grid grid-cols-2 gap-2 mb-3">
             {MODEL_PRESETS.map((preset) => (
-              <button
-                key={preset.value}
-                onClick={() => handleModelSelect(preset.value)}
-                className={`text-left px-3 py-2 rounded-lg text-sm border transition-colors cursor-pointer ${
+              <button key={preset.value} onClick={() => handleModelSelect(preset.value)}
+                className={`text-left px-3 py-2 text-xs border transition-colors cursor-pointer ${
                   settings.model === preset.value && !customModel
-                    ? 'border-accent bg-accent/5 text-accent'
-                    : 'border-ink-200 bg-ink-50 text-ink-600 hover:border-ink-300'
-                }`}
-              >
-                <div className="font-medium text-xs">{preset.label}</div>
-                <div className="text-[10px] text-ink-400 truncate">{preset.value}</div>
+                    ? 'border-amber/40 bg-amber/5 text-amber'
+                    : 'border-white/5 bg-white/[0.02] text-ink-dim hover:border-white/10'
+                }`}>
+                <div className="font-medium">{preset.label}</div>
+                <div className="text-[10px] text-ink-dim/40 truncate">{preset.value}</div>
               </button>
             ))}
-            <button
-              onClick={() => handleModelSelect('__custom__')}
-              className={`text-left px-3 py-2 rounded-lg text-sm border transition-colors cursor-pointer ${
-                customModel
-                  ? 'border-accent bg-accent/5 text-accent'
-                  : 'border-ink-200 bg-ink-50 text-ink-600 hover:border-ink-300'
-              }`}
-            >
-              <div className="font-medium text-xs">自定义</div>
-              <div className="text-[10px] text-ink-400">其他模型</div>
+            <button onClick={() => handleModelSelect('__custom__')}
+              className={`text-left px-3 py-2 text-xs border transition-colors cursor-pointer ${
+                customModel ? 'border-amber/40 bg-amber/5 text-amber' : 'border-white/5 bg-white/[0.02] text-ink-dim hover:border-white/10'
+              }`}>
+              <div className="font-medium">custom</div>
+              <div className="text-[10px] text-ink-dim/40">other model</div>
             </button>
           </div>
           {customModel && (
-            <input
-              type="text"
-              value={settings.model}
-              onChange={(e) => setSettings({ ...settings, model: e.target.value })}
-              placeholder="输入模型名称..."
-              className="w-full bg-ink-50 border border-ink-200 rounded-lg px-3 py-2 text-sm text-ink-900 outline-none focus:border-accent transition-colors font-mono"
-            />
+            <input type="text" value={settings.model} onChange={(e) => setSettings({ ...settings, model: e.target.value })}
+              placeholder="model name..." className="w-full px-3 py-2 text-sm font-mono" />
           )}
         </div>
 
-        <div className="card p-4">
-          <label className="flex items-center gap-2 text-sm font-medium text-ink-700 mb-2">
-            <Globe size={16} />
-            API Base URL
+        {/* API Base */}
+        <div className="settings-card p-4">
+          <label className="flex items-center gap-2 text-sm font-medium text-ink-dim mb-2">
+            <span className="text-amber">—</span> api base url
           </label>
-          <input
-            type="text"
-            value={settings.apiBase}
-            onChange={(e) => setSettings({ ...settings, apiBase: e.target.value })}
-            placeholder="https://api.deepseek.com"
-            className="w-full bg-ink-50 border border-ink-200 rounded-lg px-3 py-2 text-sm text-ink-900 outline-none focus:border-accent transition-colors font-mono"
-          />
-          <p className="text-xs text-ink-400 mt-2">
-            选择模型预设会自动填入。DeepSeek: https://api.deepseek.com | OpenAI: https://api.openai.com/v1
-          </p>
+          <input type="text" value={settings.apiBase} onChange={(e) => setSettings({ ...settings, apiBase: e.target.value })}
+            placeholder="https://api.deepseek.com" className="w-full px-3 py-2 text-sm font-mono" />
         </div>
 
-        <button
-          onClick={handleSave}
-          className="flex items-center gap-2 px-6 py-2.5 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent/90 transition-colors cursor-pointer"
-        >
-          {saved ? (
-            <>
-              <Check size={16} />
-              已保存
-            </>
-          ) : (
-            '保存设置'
-          )}
+        <button onClick={handleSave}
+          className="flex items-center gap-2 px-6 py-2.5 text-sm text-amber border border-amber/40 hover:bg-amber/10 transition-colors cursor-pointer">
+          {saved ? <><Check size={14} /> saved</> : 'save'}
         </button>
-      </div>
-
-      <div className="mt-10 p-4 bg-ink-50 rounded-xl border border-ink-200">
-        <h2 className="flex items-center gap-2 text-sm font-medium text-ink-700 mb-2">
-          <AlertCircle size={16} />
-          关于 5 位 AI 专家
-        </h2>
-        <div className="space-y-2 text-sm text-ink-600">
-          <p><strong>灵感师 ✨</strong> — 自由联想，提供意象和素材方向</p>
-          <p><strong>意象师 🎨</strong> — 构建意象群，打通五感通感</p>
-          <p><strong>炼字师 ⚒️</strong> — 推敲用词，提供精准的动词形容词</p>
-          <p><strong>韵律师 🎵</strong> — 调整节奏、韵脚、音乐性</p>
-          <p><strong>结构师 🏛️</strong> — 组织碎片，构建完整诗歌框架</p>
-        </div>
-        <p className="text-xs text-ink-400 mt-3">
-          每位专家独立调用 LLM，各司其职，从不同维度辅助诗歌创作。
-        </p>
       </div>
     </div>
   )
