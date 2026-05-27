@@ -30,26 +30,32 @@ function computeUnifiedLayout(
   bubbles: { key: string }[],
   sessionSeed: number
 ): Map<string, PlacedItem> {
-  const all = [
-    ...fragments.map((f) => ({ key: f.key, size: Math.min(f.textLen * 13 + 36, 280) })),
-    ...bubbles.map((b) => ({ key: b.key, size: 140 })),
+  // Place larger fragments first, then bubbles in remaining space
+  const all: { key: string; size: number }[] = [
+    ...fragments.map((f) => ({ key: f.key, size: Math.max(1, Math.min(f.textLen * 14 + 50, 300)) })),
+    ...bubbles.map(() => ({ key: '', size: 130 })).map((b, i) => ({ key: bubbles[i].key, size: b.size })),
   ]
+
   const n = Math.max(all.length, 1)
-  const cols = Math.ceil(Math.sqrt(n * 1.8))
+  // More columns = more spacing = less overlap
+  const cols = Math.ceil(Math.sqrt(n * 2.2))
   const rows = Math.ceil(n / cols)
-  const cellW = 90 / cols
-  const cellH = 84 / rows
+  const cellW = 92 / cols
+  const cellH = 88 / rows
   const result = new Map<string, PlacedItem>()
 
   all.forEach((item, i) => {
     const col = i % cols
     const row = Math.floor(i / cols)
     const rng = lcg(hashString(item.key) ^ sessionSeed)
+    // Smaller jitter = less chance of overlap
+    const jitterX = (rng() - 0.5) * cellW * 0.5
+    const jitterY = (rng() - 0.5) * cellH * 0.5
     result.set(item.key, {
-      x: Math.max(2, Math.min(94, 5 + col * cellW + cellW * 0.5 + (rng() - 0.5) * cellW * 0.85)),
-      y: Math.max(2, Math.min(90, 3 + row * cellH + cellH * 0.5 + (rng() - 0.5) * cellH * 0.85)),
-      rot: -10 + rng() * 20,
-      scale: 0.75 + rng() * 0.45,
+      x: Math.max(2, Math.min(94, 4 + col * cellW + cellW * 0.5 + jitterX)),
+      y: Math.max(2, Math.min(90, 3 + row * cellH + cellH * 0.5 + jitterY)),
+      rot: -6 + rng() * 12,
+      scale: 0.8 + rng() * 0.3,
       anim: Math.floor(rng() * 6),
       delay: rng() * 3,
     })
