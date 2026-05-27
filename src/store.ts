@@ -29,6 +29,7 @@ interface Store {
   removeInspiration: (id: string) => void
   updateInspiration: (id: string, content: string, tags: string[]) => void
   addAgentResponses: (inspirationId: string, responses: { agentId: string; title: string; content: string }[]) => void
+  removeAgentResponse: (inspirationId: string, responseIndex: number) => void
   clearAgentResponses: (inspirationId: string) => void
   promoteAgentResponse: (inspirationId: string, responseIndex: number) => void
 
@@ -84,6 +85,16 @@ export const useStore = create<Store>((set, get) => ({
               })),
             ],
           }
+        : i
+    )
+    save('poiece-inspirations', next)
+    set({ inspirations: next })
+  },
+
+  removeAgentResponse: (inspirationId, responseIndex) => {
+    const next = get().inspirations.map((i) =>
+      i.id === inspirationId
+        ? { ...i, responses: i.responses.filter((_, idx) => idx !== responseIndex) }
         : i
     )
     save('poiece-inspirations', next)

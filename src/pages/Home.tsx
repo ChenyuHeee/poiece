@@ -56,6 +56,7 @@ export default function Home() {
   const addInspiration = useStore((s) => s.addInspiration)
   const removeInspiration = useStore((s) => s.removeInspiration)
   const promoteAgentResponse = useStore((s) => s.promoteAgentResponse)
+  const removeAgentResponse = useStore((s) => s.removeAgentResponse)
 
   const [input, setInput] = useState('')
   const [loadingFor, setLoadingFor] = useState<string | null>(null)
@@ -220,11 +221,22 @@ export default function Home() {
                       zIndex: 1,
                       cursor: 'grab',
                     }}
-                    className={`bubble bubble-agent bubble-agent-${resp.agentId} bubble-float-${animName}`}
+                    className={`bubble bubble-agent bubble-agent-${resp.agentId} bubble-float-${animName} group`}
                     title={`${agent?.icon} ${agent?.name}: ${resp.content}\n拖拽到右侧收藏`}
                   >
                     <span className="mr-1 text-xs shrink-0">{agent?.icon}</span>
                     <span className="truncate">{resp.title || resp.content.slice(0, 20)}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        removeAgentResponse(insp.id, ri)
+                      }}
+                      className="ml-1 w-4 h-4 rounded-full bg-ink-200/50 text-ink-500 hover:bg-red-200 hover:text-red-500 flex items-center justify-center text-[10px] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                      title="移除这个气泡"
+                    >
+                      ×
+                    </button>
                   </div>
                 )
               })
@@ -274,7 +286,8 @@ export default function Home() {
                   </p>
                   <button
                     onClick={() => removeInspiration(insp.id)}
-                    className="p-0.5 text-ink-300 hover:text-red-400 transition-colors cursor-pointer opacity-0 group-hover:opacity-100 shrink-0"
+                    className="p-0.5 text-ink-300 hover:text-red-400 transition-colors cursor-pointer shrink-0"
+                    title="删除"
                   >
                     <Trash2 size={12} />
                   </button>
