@@ -46,7 +46,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div>
+    <div className="h-full overflow-y-auto px-4 py-4">
       <h1 className="text-2xl font-semibold text-ink-900 mb-2">设置</h1>
       <p className="text-ink-500 text-sm mb-6">
         配置 LLM API，启用 AI 辅助创作。数据均存储在你的浏览器中。

@@ -73,7 +73,7 @@ export default function Workshop() {
   const hasApiKey = !!getSettings().apiKey
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="h-full overflow-y-auto max-w-2xl mx-auto px-4 py-4">
       <div className="flex items-center gap-3 mb-6">
         <Link to="/" className="text-ink-400 hover:text-ink-600 transition-colors">
           <ArrowLeft size={18} />

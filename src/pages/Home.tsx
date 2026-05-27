@@ -169,7 +169,7 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col" style={{ height: 'calc(100svh - 56px)' }}>
+    <div className="h-full flex flex-col">
       {/* Split zone */}
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
         {/* Left: AI Cloud */}

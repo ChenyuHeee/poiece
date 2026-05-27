@@ -21,11 +21,12 @@ body {
   color: var(--color-ink-900);
   font-family: "Georgia", "Noto Serif SC", "Source Han Serif SC", serif;
   margin: 0;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 #root {
-  min-height: 100svh;
+  height: 100svh;
+  overflow: hidden;
 }
 
 .poem-text {
