@@ -33,28 +33,42 @@ body {
   letter-spacing: 0.03em;
 }
 
-/* Bubble animations */
+/* Bubble animations — translate only, so parent can use rotate/scale */
 @keyframes floatA {
   0%, 100% { transform: translateY(0px) translateX(0px); }
-  33% { transform: translateY(-6px) translateX(3px); }
-  66% { transform: translateY(-3px) translateX(-2px); }
+  33% { transform: translateY(-7px) translateX(3px); }
+  66% { transform: translateY(-3px) translateX(-3px); }
 }
 
 @keyframes floatB {
   0%, 100% { transform: translateY(0px) translateX(0px); }
-  25% { transform: translateY(-8px) translateX(-4px); }
-  75% { transform: translateY(-2px) translateX(3px); }
+  25% { transform: translateY(-9px) translateX(-5px); }
+  75% { transform: translateY(-2px) translateX(4px); }
 }
 
 @keyframes floatC {
   0%, 100% { transform: translateY(0px) translateX(0px); }
-  50% { transform: translateY(-5px) translateX(-3px); }
+  50% { transform: translateY(-6px) translateX(-4px); }
 }
 
 @keyframes floatD {
   0%, 100% { transform: translateY(0px) translateX(0px); }
-  40% { transform: translateY(-7px) translateX(5px); }
-  80% { transform: translateY(-1px) translateX(-4px); }
+  40% { transform: translateY(-8px) translateX(6px); }
+  80% { transform: translateY(-1px) translateX(-5px); }
+}
+
+@keyframes floatE {
+  0%, 100% { transform: translateY(0px) translateX(0px); }
+  30% { transform: translateY(-4px) translateX(-6px); }
+  60% { transform: translateY(-7px) translateX(2px); }
+  85% { transform: translateY(-2px) translateX(5px); }
+}
+
+@keyframes floatF {
+  0%, 100% { transform: translateY(0px) translateX(0px); }
+  20% { transform: translateY(-10px) translateX(2px); }
+  55% { transform: translateY(-3px) translateX(-4px); }
+  80% { transform: translateY(-6px) translateX(3px); }
 }
 
 @keyframes popIn {
@@ -85,13 +99,13 @@ body {
 }
 
 .bubble:hover {
-  transform: scale(1.08) !important;
-  z-index: 10;
+  transform: scale(1.1);
+  z-index: 100;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
 }
 
 .bubble:active {
-  transform: scale(0.95) !important;
+  transform: scale(0.92);
 }
 
 .bubble-mine {
@@ -122,19 +136,17 @@ body {
 .bubble-float-b { animation: floatB 5.2s ease-in-out infinite, popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
 .bubble-float-c { animation: floatC 3.8s ease-in-out infinite, popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
 .bubble-float-d { animation: floatD 6.0s ease-in-out infinite, popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
+.bubble-float-e { animation: floatE 4.0s ease-in-out infinite, popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
+.bubble-float-f { animation: floatF 5.5s ease-in-out infinite, popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
 
 .bubble-float-stop { animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
 
-/* Bubble canvas */
+/* Bubble canvas — relative container for absolute-positioned bubbles */
 .bubble-canvas {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 24px 16px;
-  min-height: calc(100svh - 180px);
-  align-content: center;
+  position: relative;
+  width: 100%;
+  min-height: calc(100svh - 200px);
+  overflow: hidden;
 }
 
 /* Expanded bubble modal */

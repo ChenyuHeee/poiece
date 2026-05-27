@@ -5,12 +5,24 @@ import { callLLM, getSettings } from '../lib/llm'
 import { X, Loader2, Sparkles, ArrowRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
-const floatClasses = ['bubble-float-a', 'bubble-float-b', 'bubble-float-c', 'bubble-float-d']
+const floatAnims = ['a', 'b', 'c', 'd', 'e', 'f']
 
-function seedFromId(id: string): number {
+function hashFromId(id: string): number[] {
   let h = 0
-  for (let i = 0; i < id.length; i++) h = ((h << 5) - h + id.charCodeAt(i)) | 0
-  return Math.abs(h)
+  for (let i = 0; i < id.length; i++) {
+    h = ((h << 5) - h + id.charCodeAt(i)) | 0
+  }
+  const abs = Math.abs(h)
+  // Extract multiple pseudo-random values from the hash
+  return [
+    abs % 1000 / 1000,           // 0: x position
+    (abs >> 3) % 1000 / 1000,    // 1: y position
+    (abs >> 7) % 1000 / 1000,    // 2: rotation
+    (abs >> 11) % 1000 / 1000,   // 3: scale
+    (abs >> 15) % 6,             // 4: animation index
+    (abs >> 19) % 1000 / 1000,   // 5: animation delay
+    (abs >> 23) % 1000 / 1000,   // 6: size factor
+  ]
 }
 
 export default function Home() {
@@ -87,71 +99,117 @@ export default function Home() {
 
   return (
     <div className="relative min-h-[calc(100svh-56px)]">
-      {/* Canvas area */}
-      <div className="bubble-canvas">
+      {/* Chaotic bubble canvas */}
+      <div
+        className="relative w-full"
+        style={{ minHeight: 'calc(100svh - 200px)' }}
+      >
         {inspirations.length === 0 ? (
-          <div className="text-center text-ink-300 select-none">
-            <p className="text-6xl mb-6 animate-[floatA_4s_ease-in-out_infinite]">🫧</p>
-            <p className="text-lg">写下第一个碎片</p>
-            <p className="text-sm mt-1">它会像气泡一样浮现在这里</p>
+          <div className="absolute inset-0 flex items-center justify-center text-ink-300 select-none">
+            <p className="text-6xl animate-[floatA_4s_ease-in-out_infinite]">🫧</p>
           </div>
         ) : (
           inspirations.map((insp) => {
-            const seed = seedFromId(insp.id)
-            const floatClass = floatClasses[seed % floatClasses.length]
-            const size = Math.min(insp.content.length * 14 + 40, 320)
+            const h = hashFromId(insp.id)
+            const x = 3 + h[0] * 80    // 3% - 83%
+            const y = 2 + h[1] * 76    // 2% - 78%
+            const rot = -8 + h[2] * 16 // -8deg to 8deg
+            const scale = 0.82 + h[3] * 0.36 // 0.82 to 1.18
+            const animName = floatAnims[Math.floor(h[4])]
+            const delay = h[5] * 3
+            const baseSize = Math.min(insp.content.length * 13 + 36, 300)
             const isSelected = selectedIds.has(insp.id)
 
             return (
-              <div key={insp.id} className="relative group">
-                {/* Main fragment bubble */}
-                <button
-                  onClick={() => {
-                    if (selectionMode) {
-                      toggleSelect(insp.id)
-                    } else {
-                      setExpandedId(insp.id)
-                    }
+              <div key={insp.id}>
+                {/* Outer: position only */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: `${x}%`,
+                    top: `${y}%`,
+                    zIndex: Math.floor(h[2] * 10),
                   }}
-                  style={{ minWidth: size > 180 ? 180 : size, maxWidth: 320 }}
-                  className={`bubble bubble-mine ${floatClass} ${isSelected ? 'bubble-selected' : ''}`}
-                  title={insp.content}
                 >
-                  <span className="truncate">{insp.content}</span>
-
-                  {/* Agent response count badge */}
-                  {insp.responses.length > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-accent text-white text-[10px] flex items-center justify-center font-medium">
-                      {insp.responses.length}
-                    </span>
-                  )}
-                </button>
-
-                {/* Agent bubbles orbiting around */}
-                {insp.responses.map((resp, ri) => {
-                  const agent = agents.find((a) => a.id === resp.agentId)
-                  const orbitSeed = seed + ri
-                  const orbitClass = floatClasses[orbitSeed % floatClasses.length]
-                  return (
+                  {/* Inner: rotation + scale (static) */}
+                  <div
+                    style={{
+                      transform: `rotate(${rot}deg) scale(${scale})`,
+                    }}
+                  >
+                    {/* Main fragment bubble — float animation */}
                     <button
-                      key={ri}
                       onClick={() => {
-                        promoteAgentResponse(insp.id, ri)
+                        if (selectionMode) {
+                          toggleSelect(insp.id)
+                        } else {
+                          setExpandedId(insp.id)
+                        }
                       }}
                       style={{
-                        position: 'absolute',
-                        top: `${-10 - (ri % 3) * 18}px`,
-                        right: `${-20 - (ri % 2) * 14}px`,
-                        zIndex: 5 + ri,
+                        minWidth: baseSize > 120 ? baseSize : 120,
+                        maxWidth: 300,
+                        animationDelay: `${delay}s`,
                       }}
-                      className={`bubble bubble-agent bubble-agent-${resp.agentId} ${orbitClass}`}
-                      title={`${agent?.icon} ${agent?.name}: ${resp.content}\n点击采纳为灵感`}
+                      className={`bubble bubble-mine bubble-float-${animName} ${isSelected ? 'bubble-selected' : ''}`}
+                      title={insp.content}
                     >
-                      <span className="mr-1 text-xs">{agent?.icon}</span>
-                      <span className="truncate">{resp.content.slice(0, 30)}</span>
+                      <span className="truncate">{insp.content}</span>
+
+                      {insp.responses.length > 0 && (
+                        <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-accent text-white text-[10px] flex items-center justify-center font-medium">
+                          {insp.responses.length}
+                        </span>
+                      )}
                     </button>
-                  )
-                })}
+                  </div>
+
+                  {/* Agent bubbles */}
+                  {insp.responses.map((resp, ri) => {
+                    const agent = agents.find((a) => a.id === resp.agentId)
+                    const rh = hashFromId(insp.id + ':' + ri)
+                    const rx = -50 + rh[0] * 100
+                    const ry = -50 + rh[1] * 100
+                    const rrot = -15 + rh[2] * 30
+                    const rscale = 0.7 + rh[3] * 0.35
+                    const ranim = floatAnims[Math.floor(rh[4])]
+                    const rdelay = rh[5] * 2
+
+                    return (
+                      <div
+                        key={ri}
+                        style={{
+                          position: 'absolute',
+                          left: `${rx}px`,
+                          top: `${ry}px`,
+                          zIndex: 2 + ri,
+                        }}
+                      >
+                        <div
+                          style={{
+                            transform: `rotate(${rrot}deg) scale(${rscale})`,
+                          }}
+                        >
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              promoteAgentResponse(insp.id, ri)
+                            }}
+                            style={{
+                              maxWidth: 220,
+                              animationDelay: `${rdelay}s`,
+                            }}
+                            className={`bubble bubble-agent bubble-agent-${resp.agentId} bubble-float-${ranim}`}
+                            title={`${agent?.icon} ${agent?.name}: ${resp.content}\n点击采纳`}
+                          >
+                            <span className="mr-1 text-xs">{agent?.icon}</span>
+                            <span className="truncate">{resp.content.slice(0, 24)}</span>
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             )
           })
