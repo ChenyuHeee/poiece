@@ -64,7 +64,7 @@ export default function SettingsPage() {
             className="w-full bg-ink-50 border border-ink-200 rounded-lg px-3 py-2 text-sm text-ink-900 outline-none focus:border-accent transition-colors font-mono"
           />
           <p className="text-xs text-ink-400 mt-2">
-            默认 OpenAI 接口。使用 DeepSeek 填 https://api.deepseek.com/v1，通义千问填 https://dashscope.aliyuncs.com/compatible-mode/v1
+            默认 OpenAI 接口。使用 DeepSeek 填 https://api.deepseek.com，通义千问填 https://dashscope.aliyuncs.com/compatible-mode/v1
           </p>
         </div>
 
@@ -81,7 +81,7 @@ export default function SettingsPage() {
             className="w-full bg-ink-50 border border-ink-200 rounded-lg px-3 py-2 text-sm text-ink-900 outline-none focus:border-accent transition-colors font-mono"
           />
           <p className="text-xs text-ink-400 mt-2">
-            推荐使用 gpt-4o-mini / deepseek-chat / qwen-turbo 等性价比模型
+            推荐使用 gpt-4o-mini / deepseek-v4-pro / deepseek-chat / qwen-turbo 等性价比模型
           </p>
         </div>
 
