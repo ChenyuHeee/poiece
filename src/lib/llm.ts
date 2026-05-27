@@ -2,8 +2,8 @@ import type { Settings } from '../types'
 
 const DEFAULT_SETTINGS: Settings = {
   apiKey: '',
-  apiBase: 'https://api.openai.com/v1',
-  model: 'gpt-4o-mini',
+  apiBase: 'https://api.deepseek.com',
+  model: 'deepseek-v4-pro',
 }
 
 export function getSettings(): Settings {

@@ -1,21 +1,48 @@
 import { useState, useEffect } from 'react'
 import { getSettings, saveSettings } from '../lib/llm'
 import type { Settings } from '../types'
-import { Key, Globe, Cpu, Check, AlertCircle } from 'lucide-react'
+import { Key, Globe, Cpu, Check, AlertCircle, ExternalLink } from 'lucide-react'
+
+const MODEL_PRESETS = [
+  { value: 'deepseek-v4-pro', label: 'DeepSeek V4 Pro', base: 'https://api.deepseek.com' },
+  { value: 'deepseek-chat', label: 'DeepSeek Chat (V3)', base: 'https://api.deepseek.com' },
+  { value: 'gpt-4o-mini', label: 'GPT-4o Mini', base: 'https://api.openai.com/v1' },
+  { value: 'gpt-4o', label: 'GPT-4o', base: 'https://api.openai.com/v1' },
+  { value: 'qwen-turbo', label: '通义千问 Turbo', base: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
+  { value: 'qwen-plus', label: '通义千问 Plus', base: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
+]
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings>(getSettings())
   const [saved, setSaved] = useState(false)
   const [showKey, setShowKey] = useState(false)
+  const [customModel, setCustomModel] = useState(false)
 
   useEffect(() => {
-    setSettings(getSettings())
+    const s = getSettings()
+    setSettings(s)
+    // If current model isn't in presets, show custom input
+    if (!MODEL_PRESETS.find((p) => p.value === s.model)) {
+      setCustomModel(true)
+    }
   }, [])
 
   const handleSave = () => {
     saveSettings(settings)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
+  }
+
+  const handleModelSelect = (value: string) => {
+    if (value === '__custom__') {
+      setCustomModel(true)
+      return
+    }
+    setCustomModel(false)
+    const preset = MODEL_PRESETS.find((p) => p.value === value)
+    if (preset) {
+      setSettings({ ...settings, model: preset.value, apiBase: preset.base })
+    }
   }
 
   return (
@@ -46,9 +73,71 @@ export default function SettingsPage() {
               {showKey ? '隐藏' : '显示'}
             </button>
           </div>
-          <p className="text-xs text-ink-400 mt-2">
-            兼容 OpenAI、DeepSeek、通义千问等兼容的 API。Key 仅存储在浏览器 localStorage 中。
+          <div className="flex items-center gap-2 mt-2">
+            <a
+              href="https://platform.deepseek.com/api_keys"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-accent hover:underline"
+            >
+              获取 DeepSeek API Key <ExternalLink size={10} />
+            </a>
+            <span className="text-xs text-ink-300">|</span>
+            <a
+              href="https://platform.openai.com/api-keys"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-accent hover:underline"
+            >
+              获取 OpenAI API Key <ExternalLink size={10} />
+            </a>
+          </div>
+          <p className="text-xs text-ink-400 mt-1">
+            Key 仅存储在浏览器 localStorage 中，不会上传到任何服务器。
           </p>
+        </div>
+
+        <div className="card p-4">
+          <label className="flex items-center gap-2 text-sm font-medium text-ink-700 mb-3">
+            <Cpu size={16} />
+            模型选择
+          </label>
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            {MODEL_PRESETS.map((preset) => (
+              <button
+                key={preset.value}
+                onClick={() => handleModelSelect(preset.value)}
+                className={`text-left px-3 py-2 rounded-lg text-sm border transition-colors cursor-pointer ${
+                  settings.model === preset.value && !customModel
+                    ? 'border-accent bg-accent/5 text-accent'
+                    : 'border-ink-200 bg-ink-50 text-ink-600 hover:border-ink-300'
+                }`}
+              >
+                <div className="font-medium text-xs">{preset.label}</div>
+                <div className="text-[10px] text-ink-400 truncate">{preset.value}</div>
+              </button>
+            ))}
+            <button
+              onClick={() => handleModelSelect('__custom__')}
+              className={`text-left px-3 py-2 rounded-lg text-sm border transition-colors cursor-pointer ${
+                customModel
+                  ? 'border-accent bg-accent/5 text-accent'
+                  : 'border-ink-200 bg-ink-50 text-ink-600 hover:border-ink-300'
+              }`}
+            >
+              <div className="font-medium text-xs">自定义</div>
+              <div className="text-[10px] text-ink-400">其他模型</div>
+            </button>
+          </div>
+          {customModel && (
+            <input
+              type="text"
+              value={settings.model}
+              onChange={(e) => setSettings({ ...settings, model: e.target.value })}
+              placeholder="输入模型名称..."
+              className="w-full bg-ink-50 border border-ink-200 rounded-lg px-3 py-2 text-sm text-ink-900 outline-none focus:border-accent transition-colors font-mono"
+            />
+          )}
         </div>
 
         <div className="card p-4">
@@ -60,28 +149,11 @@ export default function SettingsPage() {
             type="text"
             value={settings.apiBase}
             onChange={(e) => setSettings({ ...settings, apiBase: e.target.value })}
-            placeholder="https://api.openai.com/v1"
+            placeholder="https://api.deepseek.com"
             className="w-full bg-ink-50 border border-ink-200 rounded-lg px-3 py-2 text-sm text-ink-900 outline-none focus:border-accent transition-colors font-mono"
           />
           <p className="text-xs text-ink-400 mt-2">
-            默认 OpenAI 接口。使用 DeepSeek 填 https://api.deepseek.com，通义千问填 https://dashscope.aliyuncs.com/compatible-mode/v1
-          </p>
-        </div>
-
-        <div className="card p-4">
-          <label className="flex items-center gap-2 text-sm font-medium text-ink-700 mb-2">
-            <Cpu size={16} />
-            模型
-          </label>
-          <input
-            type="text"
-            value={settings.model}
-            onChange={(e) => setSettings({ ...settings, model: e.target.value })}
-            placeholder="gpt-4o-mini"
-            className="w-full bg-ink-50 border border-ink-200 rounded-lg px-3 py-2 text-sm text-ink-900 outline-none focus:border-accent transition-colors font-mono"
-          />
-          <p className="text-xs text-ink-400 mt-2">
-            推荐使用 gpt-4o-mini / deepseek-v4-pro / deepseek-chat / qwen-turbo 等性价比模型
+            选择模型预设会自动填入。DeepSeek: https://api.deepseek.com | OpenAI: https://api.openai.com/v1
           </p>
         </div>
 
