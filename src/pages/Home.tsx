@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useMemo } from 'react'
 import { useStore } from '../store'
 import { agents } from '../agents/defs'
 import { callLLM, getSettings, parseAgentItems } from '../lib/llm'
@@ -15,7 +15,6 @@ function hashString(s: string): number {
   return Math.abs(h)
 }
 
-// LCG pseudo-random generator — each seed produces a completely different sequence
 function lcg(seed: number): () => number {
   let state = seed
   return () => {
@@ -24,16 +23,56 @@ function lcg(seed: number): () => number {
   }
 }
 
-function chaosFromId(id: string) {
-  const rng = lcg(hashString(id))
-  return {
-    x: 3 + rng() * 78,
-    y: 2 + rng() * 74,
-    rot: -9 + rng() * 18,
-    scale: 0.8 + rng() * 0.4,
+interface BubbleLayout {
+  x: number; y: number; rot: number; scale: number
+  anim: number; delay: number
+}
+
+// Jittered grid — spread bubbles across adaptive grid cells to prevent overlap
+function computeLayout(ids: string[], sessionSeed: number): Map<string, BubbleLayout> {
+  const n = Math.max(ids.length, 1)
+  const cols = Math.ceil(Math.sqrt(n * 1.6))
+  const rows = Math.ceil(n / cols)
+  const cellW = 90 / cols
+  const cellH = 82 / rows
+  const map = new Map<string, BubbleLayout>()
+
+  ids.forEach((id, i) => {
+    const col = i % cols
+    const row = Math.floor(i / cols)
+
+    // Use session seed so positions change each visit
+    const rng = lcg(hashString(id) ^ sessionSeed)
+
+    // Center of cell + large random jitter
+    const baseX = 5 + col * cellW + cellW * 0.5
+    const baseY = 4 + row * cellH + cellH * 0.5
+    const x = Math.max(2, Math.min(92, baseX + (rng() - 0.5) * cellW * 0.85))
+    const y = Math.max(2, Math.min(90, baseY + (rng() - 0.5) * cellH * 0.85))
+
+    map.set(id, {
+      x, y,
+      rot: -10 + rng() * 20,
+      scale: 0.78 + rng() * 0.44,
+      anim: Math.floor(rng() * 6),
+      delay: rng() * 3,
+    })
+  })
+
+  return map
+}
+
+// Agent bubble offsets — scattered around parent, also jittered
+function agentOffsets(count: number, seed: number) {
+  const rng = lcg(seed)
+  return Array.from({ length: count }, () => ({
+    dx: -50 + rng() * 100,
+    dy: -50 + rng() * 100,
+    rot: -15 + rng() * 30,
+    scale: 0.65 + rng() * 0.4,
     anim: Math.floor(rng() * 6),
-    delay: rng() * 3,
-  }
+    delay: rng() * 2,
+  }))
 }
 
 export default function Home() {
@@ -52,8 +91,14 @@ export default function Home() {
   const [selectionMode, setSelectionMode] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
   const navigate = useNavigate()
-
+  const sessionSeed = useRef(Date.now())
   const hasApiKey = !!getSettings().apiKey
+
+  // Stable layout: jittered grid, re-randomized each page visit
+  const layout = useMemo(
+    () => computeLayout(inspirations.map((i) => i.id), sessionSeed.current),
+    [inspirations]
+  )
 
   const handleAdd = useCallback(() => {
     const v = input.trim()
@@ -125,7 +170,7 @@ export default function Home() {
           </div>
         ) : (
           inspirations.map((insp) => {
-            const c = chaosFromId(insp.id)
+            const c = layout.get(insp.id)!
             const animName = floatAnims[c.anim]
             const baseSize = Math.min(insp.content.length * 13 + 36, 300)
             const isSelected = selectedIds.has(insp.id)
@@ -177,24 +222,24 @@ export default function Home() {
                   {/* Agent bubbles */}
                   {insp.responses.map((resp, ri) => {
                     const agent = agents.find((a) => a.id === resp.agentId)
-                    const rc = chaosFromId(insp.id + ':' + ri)
-                    const rx = -60 + rc.x * 1.5
-                    const ry = -60 + rc.y * 1.5
-                    const ranim = floatAnims[rc.anim]
+                    // Re-compute offsets on each render but seeded by response index
+                    const offsets = agentOffsets(insp.responses.length, hashString(insp.id) ^ sessionSeed.current)
+                    const off = offsets[ri]
+                    const ranim = floatAnims[off.anim]
 
                     return (
                       <div
                         key={ri}
                         style={{
                           position: 'absolute',
-                          left: `${rx}px`,
-                          top: `${ry}px`,
+                          left: `${off.dx}px`,
+                          top: `${off.dy}px`,
                           zIndex: 2 + ri,
                         }}
                       >
                         <div
                           style={{
-                            transform: `rotate(${rc.rot}deg) scale(${rc.scale})`,
+                            transform: `rotate(${off.rot}deg) scale(${off.scale})`,
                           }}
                         >
                           <button
@@ -204,7 +249,7 @@ export default function Home() {
                             }}
                             style={{
                               maxWidth: 220,
-                              animationDelay: `${rc.delay}s`,
+                              animationDelay: `${off.delay}s`,
                             }}
                             className={`bubble bubble-agent bubble-agent-${resp.agentId} bubble-float-${ranim}`}
                             title={`${agent?.icon} ${agent?.name}: ${resp.content}\n点击采纳`}
