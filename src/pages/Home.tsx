@@ -3,7 +3,7 @@ import { useStore } from '../store'
 import { agents as agentDefs } from '../agents/defs'
 import { callLLM, getSettings, parseAgentItems } from '../lib/llm'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, GripVertical, Trash2 } from 'lucide-react'
+import { ArrowRight, Trash2 } from 'lucide-react'
 
 const floatAnims = ['a', 'b', 'c', 'd', 'e', 'f']
 
@@ -21,24 +21,21 @@ function lcg(seed: number): () => number {
   }
 }
 
-function computeCloudLayout(
-  allResponses: { key: string; agentId: string }[],
-  sessionSeed: number
-) {
-  const n = Math.max(allResponses.length, 1)
+function computeCloudLayout(keys: string[], sessionSeed: number) {
+  const n = Math.max(keys.length, 1)
   const cols = Math.ceil(Math.sqrt(n * 1.8))
   const rows = Math.ceil(n / cols)
   const cellW = 88 / cols
   const cellH = 80 / rows
   const result = new Map<string, { x: number; y: number; rot: number; scale: number; anim: number; delay: number }>()
 
-  allResponses.forEach((r, i) => {
+  keys.forEach((key, i) => {
     const col = i % cols
     const row = Math.floor(i / cols)
-    const rng = lcg(hashString(r.key) ^ sessionSeed)
+    const rng = lcg(hashString(key) ^ sessionSeed)
     const bx = 6 + col * cellW + cellW * 0.5 + (rng() - 0.5) * cellW * 0.8
     const by = 4 + row * cellH + cellH * 0.5 + (rng() - 0.5) * cellH * 0.8
-    result.set(r.key, {
+    result.set(key, {
       x: Math.max(1, Math.min(95, bx)),
       y: Math.max(1, Math.min(92, by)),
       rot: -10 + rng() * 20,
@@ -59,28 +56,28 @@ export default function Home() {
   const removeAgentResponse = useStore((s) => s.removeAgentResponse)
 
   const [input, setInput] = useState('')
-  const [loadingFor, setLoadingFor] = useState<string | null>(null)
+  const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set())
   const [error, setError] = useState('')
   const [dragOverZone, setDragOverZone] = useState(false)
   const sessionSeed = useRef(Date.now())
   const navigate = useNavigate()
   const hasApiKey = !!getSettings().apiKey
 
-  // Gather all agent responses across all inspirations
-  const allCloudItems = useMemo(() => {
-    const items: { key: string; agentId: string }[] = []
+  // Gather all cloud bubble keys for layout
+  const cloudKeys = useMemo(() => {
+    const keys: string[] = []
     inspirations.forEach((insp) => {
-      insp.responses.forEach((resp, ri) => {
-        items.push({ key: `${insp.id}:${ri}`, agentId: resp.agentId })
-      })
+      insp.responses.forEach((_, ri) => keys.push(`${insp.id}:${ri}`))
     })
-    return items
+    return keys
   }, [inspirations])
 
   const cloudLayout = useMemo(
-    () => computeCloudLayout(allCloudItems, sessionSeed.current),
-    [allCloudItems]
+    () => computeCloudLayout(cloudKeys, sessionSeed.current),
+    [cloudKeys]
   )
+
+  const totalCloudBubbles = cloudKeys.length
 
   const handleAdd = useCallback(async () => {
     const v = input.trim()
@@ -90,57 +87,52 @@ export default function Home() {
 
     if (!hasApiKey) return
 
-    // Get the newly added inspiration (first in list after add)
-    const settings = getSettings()
-    if (!settings.apiKey) return
+    // zustand is synchronous — read immediately
+    const latest = useStore.getState().inspirations[0]
+    if (!latest || latest.content !== v) return
 
-    // We need the new fragment's ID — it's at the top of the list
-    // Small delay to let zustand update
-    setTimeout(async () => {
-      const state = useStore.getState()
-      const latest = state.inspirations[0]
-      if (!latest || latest.content !== v) return
+    setLoadingIds((prev) => new Set(prev).add(latest.id))
 
-      setLoadingFor(latest.id)
-      const context = state.inspirations
-        .filter((i) => i.id !== latest.id)
-        .slice(0, 5)
-        .map((i) => i.content)
-        .join(' / ')
+    const context = useStore.getState().inspirations
+      .filter((i) => i.id !== latest.id)
+      .slice(0, 5)
+      .map((i) => i.content)
+      .join(' / ')
 
-      // Call all agents in parallel
-      const results = await Promise.allSettled(
-        agentDefs.map(async (agent) => {
-          const raw = await callLLM(
-            agent.systemPrompt,
-            agent.userPromptTemplate(v, context),
-            undefined
-          )
-          const items = parseAgentItems(raw)
-          return { agentId: agent.id, items }
-        })
-      )
-
-      const allItems: { agentId: string; title: string; content: string }[] = []
-      results.forEach((r) => {
-        if (r.status === 'fulfilled') {
-          r.value.items.forEach((it) => {
-            allItems.push({ agentId: r.value.agentId, title: it.title, content: it.body })
-          })
-        }
+    const results = await Promise.allSettled(
+      agentDefs.map(async (agent) => {
+        const raw = await callLLM(agent.systemPrompt, agent.userPromptTemplate(v, context))
+        return { agentId: agent.id, items: parseAgentItems(raw) }
       })
+    )
 
-      if (allItems.length > 0) {
-        useStore.getState().addAgentResponses(latest.id, allItems)
+    const allItems: { agentId: string; title: string; content: string }[] = []
+    results.forEach((r) => {
+      if (r.status === 'fulfilled') {
+        r.value.items.forEach((it) => allItems.push({ agentId: r.value.agentId, title: it.title, content: it.body }))
       }
-      setLoadingFor(null)
-    }, 50)
+    })
+
+    if (allItems.length > 0) {
+      useStore.getState().addAgentResponses(latest.id, allItems)
+    }
+    setLoadingIds((prev) => {
+      const next = new Set(prev)
+      next.delete(latest.id)
+      return next
+    })
   }, [input, addInspiration, hasApiKey])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleAdd()
   }
 
+  // Click to collect (in addition to drag)
+  const collectBubble = (inspirationId: string, responseIndex: number) => {
+    promoteAgentResponse(inspirationId, responseIndex)
+  }
+
+  // Drag handlers
   const handleDragStart = (e: React.DragEvent, inspirationId: string, responseIndex: number) => {
     e.dataTransfer.setData('text/plain', JSON.stringify({ inspirationId, responseIndex }))
     e.dataTransfer.effectAllowed = 'copy'
@@ -152,7 +144,14 @@ export default function Home() {
     setDragOverZone(true)
   }
 
-  const handleDragLeave = () => setDragOverZone(false)
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Only set false if leaving the zone entirely
+    const rect = e.currentTarget.getBoundingClientRect()
+    const { clientX, clientY } = e
+    if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
+      setDragOverZone(false)
+    }
+  }
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
@@ -176,19 +175,19 @@ export default function Home() {
         {/* Left: AI Cloud */}
         <div className="flex-1 relative border-r border-ink-200/50 min-h-[45%] lg:min-h-0">
           <div className="absolute top-2 left-3 text-xs text-ink-300 z-10 pointer-events-none">
-            AI 气泡云
+            AI 气泡云 {totalCloudBubbles > 0 && `(${totalCloudBubbles})`}
           </div>
 
-          {allCloudItems.length === 0 && !loadingFor && (
+          {totalCloudBubbles === 0 && loadingIds.size === 0 && (
             <div className="absolute inset-0 flex items-center justify-center text-ink-200 select-none pointer-events-none">
               <div className="text-center">
                 <p className="text-5xl mb-2">🫧</p>
-                <p className="text-xs">输入一个词，AI 气泡会浮现</p>
+                <p className="text-xs">输入词句，AI 气泡浮现</p>
               </div>
             </div>
           )}
 
-          {loadingFor && allCloudItems.length === 0 && (
+          {totalCloudBubbles === 0 && loadingIds.size > 0 && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <p className="text-sm text-ink-300 animate-[shimmer_1s_ease-in-out_infinite]">
                 AI 正在思考...
@@ -196,7 +195,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* Cloud bubbles */}
           <div className="relative w-full h-full overflow-hidden">
             {inspirations.map((insp) =>
               insp.responses.map((resp, ri) => {
@@ -205,12 +203,14 @@ export default function Home() {
                 if (!layout) return null
                 const agent = agentDefs.find((a) => a.id === resp.agentId)
                 const animName = floatAnims[layout.anim]
+                const isLoading = loadingIds.has(insp.id)
 
                 return (
                   <div
                     key={key}
                     draggable
                     onDragStart={(e) => handleDragStart(e, insp.id, ri)}
+                    onClick={() => collectBubble(insp.id, ri)}
                     style={{
                       position: 'absolute',
                       left: `${layout.x}%`,
@@ -219,10 +219,9 @@ export default function Home() {
                       animationDelay: `${layout.delay}s`,
                       maxWidth: 200,
                       zIndex: 1,
-                      cursor: 'grab',
                     }}
-                    className={`bubble bubble-agent bubble-agent-${resp.agentId} bubble-float-${animName} group`}
-                    title={`${agent?.icon} ${agent?.name}: ${resp.content}\n拖拽到右侧收藏`}
+                    className={`bubble bubble-agent bubble-agent-${resp.agentId} bubble-float-${animName} group cursor-grab active:cursor-grabbing hover:z-20 ${isLoading ? 'opacity-60' : ''}`}
+                    title={`${agent?.icon} ${agent?.name}\n${resp.content}\n点击或拖拽到右侧收藏`}
                   >
                     <span className="mr-1 text-xs shrink-0">{agent?.icon}</span>
                     <span className="truncate">{resp.title || resp.content.slice(0, 20)}</span>
@@ -232,8 +231,8 @@ export default function Home() {
                         e.preventDefault()
                         removeAgentResponse(insp.id, ri)
                       }}
-                      className="ml-1 w-4 h-4 rounded-full bg-ink-200/50 text-ink-500 hover:bg-red-200 hover:text-red-500 flex items-center justify-center text-[10px] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                      title="移除这个气泡"
+                      className="ml-1 w-4 h-4 rounded-full bg-ink-200/50 text-ink-500 hover:bg-red-200 hover:text-red-500 flex items-center justify-center text-[10px] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-30"
+                      title="移除此气泡"
                     >
                       ×
                     </button>
@@ -246,7 +245,7 @@ export default function Home() {
 
         {/* Right: My Zone */}
         <div
-          className={`flex-1 flex flex-col min-h-[35%] lg:min-h-0 transition-colors ${
+          className={`flex-1 flex flex-col min-h-[35%] lg:min-h-0 relative transition-colors ${
             dragOverZone ? 'bg-accent/10' : ''
           }`}
           onDragOver={handleDragOver}
@@ -254,39 +253,36 @@ export default function Home() {
           onDrop={handleDrop}
         >
           <div className="flex items-center justify-between px-3 py-2 border-b border-ink-200/50 shrink-0">
-            <span className="text-xs text-ink-300">我的碎片</span>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-ink-300">{inspirations.length}</span>
-              {inspirations.length > 0 && (
-                <button
-                  onClick={handleGoWorkshop}
-                  className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-accent text-white hover:bg-accent/90 transition-colors cursor-pointer"
-                >
-                  成诗
-                  <ArrowRight size={10} />
-                </button>
-              )}
-            </div>
+            <span className="text-xs text-ink-300">
+              我的碎片 {inspirations.length > 0 && `(${inspirations.length})`}
+            </span>
+            {inspirations.length > 0 && (
+              <button
+                onClick={handleGoWorkshop}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-accent text-white hover:bg-accent/90 transition-colors cursor-pointer"
+              >
+                成诗 <ArrowRight size={10} />
+              </button>
+            )}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+          <div className="flex-1 overflow-y-auto p-2 space-y-1">
             {inspirations.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-ink-200 select-none">
-                <p className="text-xs">输入词句或拖拽 AI 气泡到这里</p>
+              <div className="flex items-center justify-center h-full text-ink-200 select-none pointer-events-none">
+                <p className="text-xs">输入词句或拖拽/点击 AI 气泡来这里</p>
               </div>
             ) : (
               inspirations.map((insp) => (
                 <div
                   key={insp.id}
-                  className="group flex items-start gap-2 px-3 py-2 rounded-lg hover:bg-white/40 transition-colors"
+                  className="flex items-start gap-2 px-3 py-2 rounded-lg hover:bg-white/40 transition-colors group"
                 >
-                  <GripVertical size={12} className="text-ink-300 mt-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                   <p className="flex-1 text-sm text-ink-800 poem-text leading-relaxed break-words min-w-0">
                     {insp.content}
                   </p>
                   <button
                     onClick={() => removeInspiration(insp.id)}
-                    className="p-0.5 text-ink-300 hover:text-red-400 transition-colors cursor-pointer shrink-0"
+                    className="p-0.5 text-ink-300 hover:text-red-400 transition-colors cursor-pointer shrink-0 opacity-0 group-hover:opacity-100"
                     title="删除"
                   >
                     <Trash2 size={12} />
@@ -296,9 +292,9 @@ export default function Home() {
             )}
           </div>
 
-          {/* Drop hint */}
+          {/* Drop overlay hint */}
           {dragOverZone && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 bg-accent/5">
               <p className="text-accent text-lg font-medium">释放以收藏</p>
             </div>
           )}
