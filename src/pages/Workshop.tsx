@@ -78,7 +78,8 @@ export default function Workshop() {
 
   const handleSave = () => {
     if (!poemContent.trim()) return
-    savePoem(poemTitle || 'untitled', poemContent, [...selectedIds])
+    const firstLine = poemContent.trim().split('\n')[0].slice(0, 20)
+    savePoem(poemTitle || firstLine || 'untitled', poemContent, [...selectedIds])
     setPoemTitle('')
   }
 
