@@ -21,11 +21,10 @@ body {
   color: var(--color-ink-900);
   font-family: "Georgia", "Noto Serif SC", "Source Han Serif SC", serif;
   margin: 0;
+  overflow-x: hidden;
 }
 
 #root {
-  max-width: 960px;
-  margin: 0 auto;
   min-height: 100svh;
 }
 
@@ -34,30 +33,233 @@ body {
   letter-spacing: 0.03em;
 }
 
-.card {
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--color-ink-200);
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+/* Bubble animations */
+@keyframes floatA {
+  0%, 100% { transform: translateY(0px) translateX(0px); }
+  33% { transform: translateY(-6px) translateX(3px); }
+  66% { transform: translateY(-3px) translateX(-2px); }
 }
 
-.card:hover {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+@keyframes floatB {
+  0%, 100% { transform: translateY(0px) translateX(0px); }
+  25% { transform: translateY(-8px) translateX(-4px); }
+  75% { transform: translateY(-2px) translateX(3px); }
 }
 
-.agent-msg {
-  border-left: 3px solid var(--color-accent);
-  padding-left: 12px;
+@keyframes floatC {
+  0%, 100% { transform: translateY(0px) translateX(0px); }
+  50% { transform: translateY(-5px) translateX(-3px); }
 }
 
-.tag {
+@keyframes floatD {
+  0%, 100% { transform: translateY(0px) translateX(0px); }
+  40% { transform: translateY(-7px) translateX(5px); }
+  80% { transform: translateY(-1px) translateX(-4px); }
+}
+
+@keyframes popIn {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.bubble {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  padding: 2px 10px;
+  padding: 8px 18px;
   border-radius: 999px;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+  white-space: nowrap;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bubble:hover {
+  transform: scale(1.08) !important;
+  z-index: 10;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.bubble:active {
+  transform: scale(0.95) !important;
+}
+
+.bubble-mine {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1.5px solid var(--color-ink-200);
+  color: var(--color-ink-800);
+}
+
+.bubble-agent {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(6px);
+  border: 1.5px solid transparent;
+  font-size: 0.85rem;
+  padding: 6px 14px;
+  max-width: 260px;
+  animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both,
+    shimmer 3s ease-in-out infinite;
+}
+
+.bubble-agent-inspiration { border-color: #f9e79f; background: rgba(254, 249, 231, 0.7); }
+.bubble-agent-imagery { border-color: #d2b4de; background: rgba(244, 236, 247, 0.7); }
+.bubble-agent-word-alchemy { border-color: #a3e4d7; background: rgba(232, 248, 245, 0.7); }
+.bubble-agent-rhythm { border-color: #f5b7b1; background: rgba(253, 237, 236, 0.7); }
+.bubble-agent-structure { border-color: #aed6f1; background: rgba(235, 245, 251, 0.7); }
+
+.bubble-float-a { animation: floatA 4.5s ease-in-out infinite, popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
+.bubble-float-b { animation: floatB 5.2s ease-in-out infinite, popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
+.bubble-float-c { animation: floatC 3.8s ease-in-out infinite, popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
+.bubble-float-d { animation: floatD 6.0s ease-in-out infinite, popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
+
+.bubble-float-stop { animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
+
+/* Bubble canvas */
+.bubble-canvas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px 16px;
+  min-height: calc(100svh - 180px);
+  align-content: center;
+}
+
+/* Expanded bubble modal */
+.bubble-expand-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(4px);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.bubble-expand-card {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--color-ink-200);
+  border-radius: 24px;
+  padding: 28px;
+  max-width: 480px;
+  width: 90%;
+  max-height: 80svh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+/* Quick add */
+.quick-add {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--color-ink-200);
+  border-radius: 999px;
+  padding: 6px 6px 6px 20px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+.quick-add input {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 0.95rem;
+  color: var(--color-ink-900);
+  width: 280px;
+  line-height: 1.6;
+}
+
+.quick-add input::placeholder {
+  color: var(--color-ink-300);
+}
+
+.quick-add-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-accent);
+  color: white;
+  font-size: 1.4rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, background 0.15s ease;
+  flex-shrink: 0;
+}
+
+.quick-add-btn:hover {
+  transform: scale(1.08);
+  background: #a06448;
+}
+
+.quick-add-btn:active {
+  transform: scale(0.92);
+}
+
+/* Agent trigger ring */
+.agent-ring {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.agent-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-ink-200);
+  background: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 0.75rem;
-  background: var(--color-ink-100);
-  color: var(--color-ink-600);
-  font-family: system-ui, sans-serif;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.agent-dot:hover {
+  transform: scale(1.2);
+  border-color: var(--color-accent);
+}
+
+.agent-dot.loading {
+  animation: shimmer 1s ease-in-out infinite;
+}
+
+/* Selected state for workshop */
+.bubble-selected {
+  box-shadow: 0 0 0 3px var(--color-accent), 0 4px 16px rgba(184, 118, 90, 0.25) !important;
+  border-color: var(--color-accent) !important;
 }

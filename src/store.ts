@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { Inspiration, PoemDraft } from './types'
+import { agents } from './agents/defs'
 
 function load<T>(key: string, fallback: T): T {
   try {
@@ -29,6 +30,7 @@ interface Store {
   updateInspiration: (id: string, content: string, tags: string[]) => void
   addAgentResponse: (inspirationId: string, response: { agentId: string; content: string }) => void
   clearAgentResponses: (inspirationId: string) => void
+  promoteAgentResponse: (inspirationId: string, responseIndex: number) => void
 
   savePoem: (title: string, content: string, sourceIds: string[]) => void
   updatePoem: (id: string, title: string, content: string) => void
@@ -88,6 +90,26 @@ export const useStore = create<Store>((set, get) => ({
     )
     save('poiece-inspirations', next)
     set({ inspirations: next })
+  },
+
+  promoteAgentResponse: (inspirationId, responseIndex) => {
+    const state = get()
+    const insp = state.inspirations.find((i) => i.id === inspirationId)
+    if (!insp) return
+    const resp = insp.responses[responseIndex]
+    if (!resp) return
+
+    const agent = agents.find((a) => a.id === resp.agentId)
+    const newInsp: Inspiration = {
+      id: uid(),
+      content: resp.content,
+      tags: [agent?.name || resp.agentId, '来自AI'],
+      createdAt: Date.now(),
+      responses: [],
+    }
+    const nextInspirations = [newInsp, ...state.inspirations]
+    save('poiece-inspirations', nextInspirations)
+    set({ inspirations: nextInspirations })
   },
 
   savePoem: (title, content, sourceIds) => {
