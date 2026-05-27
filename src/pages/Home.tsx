@@ -125,7 +125,11 @@ export default function Home() {
   }
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setDragOverZone(false)
-    try { const d = JSON.parse(e.dataTransfer.getData('text/plain')); promoteAgentResponse(d.inspirationId, d.responseIndex) } catch {}
+    try {
+      const d = JSON.parse(e.dataTransfer.getData('text/plain'))
+      promoteAgentResponse(d.inspirationId, d.responseIndex)
+      removeAgentResponse(d.inspirationId, d.responseIndex)
+    } catch {}
   }
 
   const totalCloudBubbles = cloudKeys.length
