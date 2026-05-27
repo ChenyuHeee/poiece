@@ -12,6 +12,7 @@ export default function Layout() {
             {[
               ['/', '灵感'],
               ['/workshop', '工坊'],
+              ['/archives', '归档'],
               ['/settings', '设置'],
             ].map(([to, label]) => (
               <NavLink

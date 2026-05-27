@@ -36,3 +36,10 @@ export interface Settings {
   apiBase: string
   model: string
 }
+
+export interface Archive {
+  id: string
+  name: string
+  inspirations: Inspiration[]
+  createdAt: number
+}

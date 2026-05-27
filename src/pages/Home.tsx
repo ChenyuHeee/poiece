@@ -146,6 +146,7 @@ export default function Home() {
   const promoteAgentResponse = useStore((s) => s.promoteAgentResponse)
   const removeAgentResponse = useStore((s) => s.removeAgentResponse)
   const cleanupExpiredResponses = useStore((s) => s.cleanupExpiredResponses)
+  const archiveAll = useStore((s) => s.archiveAll)
 
   const [input, setInput] = useState('')
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set())
@@ -306,16 +307,24 @@ export default function Home() {
         )}
 
         {inspirations.length > 0 && (
-          <button
-            onClick={() => {
-              const ids = forgeCount > 0 ? [...selectedForForge] : inspirations.map((i) => i.id)
-              navigate('/workshop', { state: { preSelected: ids } })
-            }}
-            className="absolute top-3 right-4 z-30 flex items-center gap-1.5 px-3 py-1.5 text-xs text-amber border border-amber/30 bg-desk/80 backdrop-blur hover:bg-amber/10 transition-colors cursor-pointer italic"
-          >
-            <Sparkles size={11} />
-            forge{forgeCount > 0 ? ` (${forgeCount})` : ` (${inspirations.length})`}
-          </button>
+          <div className="absolute top-3 right-4 z-30 flex items-center gap-2">
+            <button
+              onClick={() => archiveAll()}
+              className="px-2.5 py-1.5 text-xs text-ink-dim/40 border border-white/5 bg-desk/80 backdrop-blur hover:text-ink-dim hover:border-white/10 transition-colors cursor-pointer italic"
+            >
+              archive
+            </button>
+            <button
+              onClick={() => {
+                const ids = forgeCount > 0 ? [...selectedForForge] : inspirations.map((i) => i.id)
+                navigate('/workshop', { state: { preSelected: ids } })
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-amber border border-amber/30 bg-desk/80 backdrop-blur hover:bg-amber/10 transition-colors cursor-pointer italic"
+            >
+              <Sparkles size={11} />
+              forge{forgeCount > 0 ? ` (${forgeCount})` : ` (${inspirations.length})`}
+            </button>
+          </div>
         )}
         {forgeCount > 0 && (
           <div className="absolute top-3 left-4 z-20 text-xs text-ink-dim/30 italic">{forgeCount} selected</div>

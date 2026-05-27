@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Inspiration, PoemDraft } from './types'
+import type { Inspiration, PoemDraft, Archive } from './types'
 import { agents } from './agents/defs'
 
 function load<T>(key: string, fallback: T): T {
@@ -24,6 +24,7 @@ function uid(): string {
 interface Store {
   inspirations: Inspiration[]
   poems: PoemDraft[]
+  archives: Archive[]
 
   addInspiration: (content: string, tags: string[]) => void
   removeInspiration: (id: string) => void
@@ -34,6 +35,10 @@ interface Store {
   promoteAgentResponse: (inspirationId: string, responseIndex: number) => void
   cleanupExpiredResponses: (maxAgeMs?: number, maxTotal?: number) => void
 
+  archiveAll: () => void
+  restoreArchive: (id: string) => void
+  removeArchive: (id: string) => void
+
   savePoem: (title: string, content: string, sourceIds: string[]) => void
   updatePoem: (id: string, title: string, content: string) => void
   removePoem: (id: string) => void
@@ -42,6 +47,7 @@ interface Store {
 export const useStore = create<Store>((set, get) => ({
   inspirations: load<Inspiration[]>('poiece-inspirations', []),
   poems: load<PoemDraft[]>('poiece-poems', []),
+  archives: load<Archive[]>('poiece-archives', []),
 
   addInspiration: (content, tags) => {
     const insp: Inspiration = {
@@ -166,6 +172,36 @@ export const useStore = create<Store>((set, get) => ({
       save('poiece-inspirations', afterAge)
       set({ inspirations: afterAge })
     }
+  },
+
+  archiveAll: () => {
+    const state = get()
+    if (state.inspirations.length === 0) return
+    const archive: Archive = {
+      id: uid(),
+      name: state.inspirations[0].content.slice(0, 12) + '…',
+      inspirations: JSON.parse(JSON.stringify(state.inspirations)),
+      createdAt: Date.now(),
+    }
+    const nextArchives = [archive, ...state.archives]
+    save('poiece-archives', nextArchives)
+    save('poiece-inspirations', [])
+    set({ archives: nextArchives, inspirations: [] })
+  },
+
+  restoreArchive: (id) => {
+    const state = get()
+    const archive = state.archives.find((a) => a.id === id)
+    if (!archive) return
+    const nextInspirations = JSON.parse(JSON.stringify(archive.inspirations))
+    save('poiece-inspirations', nextInspirations)
+    set({ inspirations: nextInspirations })
+  },
+
+  removeArchive: (id) => {
+    const next = get().archives.filter((a) => a.id !== id)
+    save('poiece-archives', next)
+    set({ archives: next })
   },
 
   savePoem: (title, content, sourceIds) => {
