@@ -11,7 +11,7 @@
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },
-  "homepage": "https://hechenyu.github.io/poiece",
+  "homepage": "https://chenyuheee.github.io/poiece",
   "dependencies": {
     "lucide-react": "^1.16.0",
     "react": "^19.2.6",
