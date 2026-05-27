@@ -110,6 +110,7 @@ export default function Home() {
 
   const collectBubble = (inspirationId: string, responseIndex: number) => {
     promoteAgentResponse(inspirationId, responseIndex)
+    removeAgentResponse(inspirationId, responseIndex)
   }
 
   const handleDragStart = (e: React.DragEvent, inspirationId: string, responseIndex: number) => {
@@ -179,7 +180,7 @@ export default function Home() {
                     title={`${agent?.icon} ${agent?.name}\n${resp.content}\nclick or drag → collect`}
                   >
                     <span className="mr-1 text-xs shrink-0">{agent?.icon}</span>
-                    <span className="truncate">{resp.title || resp.content.slice(0, 20)}</span>
+                    <span className="truncate">{resp.content}</span>
                     <button
                       onClick={(e) => { e.stopPropagation(); e.preventDefault(); removeAgentResponse(insp.id, ri) }}
                       className="ml-1 w-4 h-4 rounded-full bg-amber/10 text-ink-dim/50 hover:bg-redink/30 hover:text-redink-glow flex items-center justify-center text-[10px] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
