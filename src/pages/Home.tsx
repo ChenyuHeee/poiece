@@ -20,38 +20,122 @@ function lcg(seed: number): () => number {
 }
 
 interface PlacedItem {
-  x: number; y: number; rot: number; scale: number
+  x: number; y: number; rot: number; scale: number; radius: number
   anim: number; delay: number
 }
 
+// Estimate item size in % of canvas width (rough: 1% ≈ 12px at 1200px)
+function getRadius(key: string, textLen?: number): number {
+  if (key.startsWith('frag:')) {
+    // Fragment: wider for longer text. Min 4%, max 12%
+    return Math.max(4, Math.min(12, (textLen || 4) * 1.1 + 2))
+  }
+  return 6 // Bubble ~6% radius (= 12% diameter ≈ 144px)
+}
+
+function resolveCollisions(
+  items: { key: string; x: number; y: number; radius: number }[],
+  fixedKeys: Set<string>,
+  iterations = 8
+) {
+  for (let iter = 0; iter < iterations; iter++) {
+    let anyOverlap = false
+    for (let i = 0; i < items.length; i++) {
+      if (fixedKeys.has(items[i].key)) continue
+      for (let j = i + 1; j < items.length; j++) {
+        const a = items[i], b = items[j]
+        const dx = b.x - a.x
+        const dy = b.y - a.y
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        const minDist = a.radius + b.radius + 1.5 // 1.5% safety margin
+        if (dist < minDist && dist > 0.01) {
+          anyOverlap = true
+          const overlap = minDist - dist
+          const nx = dx / dist, ny = dy / dist
+          // Push both apart, but fixed items don't move
+          const pushA = fixedKeys.has(a.key) ? 0 : (fixedKeys.has(b.key) ? overlap : overlap * 0.5)
+          const pushB = fixedKeys.has(b.key) ? 0 : (fixedKeys.has(a.key) ? overlap : overlap * 0.5)
+          if (!fixedKeys.has(a.key)) { a.x -= nx * pushA; a.y -= ny * pushA }
+          if (!fixedKeys.has(b.key)) { b.x += nx * pushB; b.y += ny * pushB }
+          // Clamp
+          a.x = Math.max(2, Math.min(96, a.x))
+          a.y = Math.max(2, Math.min(94, a.y))
+          b.x = Math.max(2, Math.min(96, b.x))
+          b.y = Math.max(2, Math.min(94, b.y))
+        }
+      }
+    }
+    if (!anyOverlap) break
+  }
+}
+
 function computeUnifiedLayout(
-  fragments: { key: string }[],
+  fragments: { key: string; textLen: number }[],
   bubbles: { key: string }[],
-  sessionSeed: number
+  sessionSeed: number,
+  customPositions: Map<string, { x: number; y: number }>
 ): Map<string, PlacedItem> {
-  const all = [...fragments.map((f) => f.key), ...bubbles.map((b) => b.key)]
-  const n = Math.max(all.length, 1)
-  const cols = Math.ceil(Math.sqrt(n * 3.0))
+  const result = new Map<string, PlacedItem>()
+  const collisionItems: { key: string; x: number; y: number; radius: number }[] = []
+  const fixedKeys = new Set(customPositions.keys())
+
+  // Place items with custom positions first
+  const allKeys = [...fragments.map((f) => f.key), ...bubbles.map((b) => b.key)]
+  const gridItems = allKeys.filter((k) => !customPositions.has(k))
+
+  const n = Math.max(gridItems.length, 1)
+  const cols = Math.ceil(Math.sqrt(n * 2.5))
   const rows = Math.ceil(n / cols)
   const cellW = 90 / cols
   const cellH = 84 / rows
-  const result = new Map<string, PlacedItem>()
 
-  all.forEach((key, i) => {
+  // Place grid items
+  gridItems.forEach((key, i) => {
     const col = i % cols
     const row = Math.floor(i / cols)
     const rng = lcg(hashString(key) ^ sessionSeed)
-    const jx = (rng() - 0.5) * cellW * 0.35
-    const jy = (rng() - 0.5) * cellH * 0.35
+    const frag = fragments.find((f) => f.key === key)
+    const radius = getRadius(key, frag?.textLen)
     result.set(key, {
-      x: Math.max(2, Math.min(94, 5 + col * cellW + cellW * 0.5 + jx)),
-      y: Math.max(2, Math.min(90, 4 + row * cellH + cellH * 0.5 + jy)),
+      x: Math.max(2, Math.min(94, 5 + col * cellW + cellW * 0.5 + (rng() - 0.5) * cellW * 0.3)),
+      y: Math.max(2, Math.min(90, 4 + row * cellH + cellH * 0.5 + (rng() - 0.5) * cellH * 0.3)),
       rot: -5 + rng() * 10,
       scale: 0.82 + rng() * 0.26,
       anim: Math.floor(rng() * 6),
       delay: rng() * 3,
+      radius,
     })
   })
+
+  // Add custom-positioned items
+  customPositions.forEach((pos, key) => {
+    const frag = fragments.find((f) => f.key === key)
+    const radius = getRadius(key, frag?.textLen)
+    result.set(key, {
+      x: pos.x, y: pos.y,
+      rot: -3 + lcg(hashString(key) ^ sessionSeed)() * 6,
+      scale: 0.85,
+      anim: Math.floor(lcg(hashString(key) ^ sessionSeed)() * 6),
+      delay: 0,
+      radius,
+    })
+  })
+
+  // Build collision list and resolve
+  result.forEach((item, key) => {
+    collisionItems.push({ key, x: item.x, y: item.y, radius: item.radius })
+  })
+
+  resolveCollisions(collisionItems, fixedKeys)
+
+  // Write back resolved positions
+  collisionItems.forEach((ci) => {
+    const existing = result.get(ci.key)
+    if (existing) {
+      result.set(ci.key, { ...existing, x: ci.x, y: ci.y })
+    }
+  })
+
   return result
 }
 
@@ -82,18 +166,18 @@ export default function Home() {
   }, [cleanupExpiredResponses])
 
   const layoutInput = useMemo(() => {
-    const fragments: { key: string }[] = []
+    const fragments: { key: string; textLen: number }[] = []
     const bubbles: { key: string }[] = []
     inspirations.forEach((insp) => {
-      fragments.push({ key: `frag:${insp.id}` })
+      fragments.push({ key: `frag:${insp.id}`, textLen: insp.content.length })
       insp.responses.forEach((_, ri) => bubbles.push({ key: `bubble:${insp.id}:${ri}` }))
     })
     return { fragments, bubbles }
   }, [inspirations])
 
   const layout = useMemo(
-    () => computeUnifiedLayout(layoutInput.fragments, layoutInput.bubbles, sessionSeed.current),
-    [layoutInput]
+    () => computeUnifiedLayout(layoutInput.fragments, layoutInput.bubbles, sessionSeed.current, customPositions.current),
+    [layoutInput, dragTick]
   )
 
   // Get effective position: custom override or grid layout
